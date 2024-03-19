@@ -1,49 +1,80 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { FlatList, Text, View, StyleSheet, StatusBar, SafeAreaView } from 'react-native';
+import { ApolloClient, InMemoryCache, ApolloProvider, useQuery, gql } from '@apollo/client';
 
-import Welcome from './components/Welcome';
-import { Pet } from './components/Pet';
-import { PetQualities } from './components/PetQualProsp';
-
-export default function App() {
-  const petName = {
-    firstName: "Roger",
-    lastName: "Porticous"
-  }
-
-  const qualities = [
-    {
-      qualOne: "loyal",
-      qualTwo: "friendly",
-      qualThree: "protective",
-      age: 3
-    },
-    {
-      qualOne: "playful",
-      qualTwo: "energetic",
-      qualThree: "loving",
-      age: 1
-    }
-  ]
-
-  return (
-    <View style={styles.container}>
-      <Welcome name="Jack" age={37} gender={true} />
-      <Pet petName={petName} type="Komodo Dragon" />
-      <PetQualities qualities={qualities} />
-      <Text>{constMessage}</Text>
-    </View>
-  );
+interface User {
+  id: string;
+  name: string;
+  email: string;
 }
 
-const constMessage = "Hello World!";
+interface UsersData {
+  users: User[];
+}
+
+const client = new ApolloClient({
+  uri: 'http://localhost:3000/graphql',
+  cache: new InMemoryCache()
+});
+
+const USERS_QUERY = gql`
+  query GetUsers {
+    users {
+      id
+      name
+      email
+    }
+  }
+`;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    padding: 10,
+    backgroundColor: '#f5f5f5',
+  },
+  item: {
     backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 30
+    padding: 20,
+    marginVertical: 8,
+    marginHorizontal: 16,
+  },
+  title: {
+    fontSize: 32,
+  },
+  safeArea: {
+    flex: 1,
+    marginTop: StatusBar.currentHeight || 0,
   },
 });
+
+function Users() {
+  const { loading, error, data } = useQuery<UsersData>(USERS_QUERY);
+
+  if (loading) return <Text>Loading...</Text>;
+  if (error) return <Text>Error :(</Text>;
+
+  return data && data.users ? (
+    <FlatList
+      data={data.users}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => (
+        <View style={styles.item}>
+          <Text style={styles.title}>{item.name}</Text>
+          <Text>{item.email}</Text>
+        </View>
+      )}
+    />
+  ) : null;
+}
+
+export default function App() {
+  return (
+    <ApolloProvider client={client}>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+          <Users />
+        </View>
+      </SafeAreaView>
+    </ApolloProvider>
+  );
+}
